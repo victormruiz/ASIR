@@ -1,2 +1,0 @@
-# ASIR
-directorio asir
