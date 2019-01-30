@@ -1,0 +1,139 @@
+------------------------------------------------------------------------RESUELTO-----------------------------------------------------------------------
+
+Horarios Subastas 0 Falta la información de la hora de comienzo de cada subasta y poder saber las especies que se venderán en cada subasta. Si yo quiero ir a comprar merluza en Febrero, debo poder saber a qué hora es la subasta.
+
+Puntos de Atraque 0.25 Entidad Innecesaria: No vamos a guardar información acerca de cada cinta transportadora.------------------
+
+Cuotas 0 Error de Cardinalidad entre Puntos de Atraque y Cuotas. No podemos saber qué cuotas están pagadas y cuáles no. Falta información de los armadores.
+
+Lotes 0 Error de Clave: La clave primaria no puede ser el código de la subasta, pues se repetiría. Hay información repetida (precio por kilo, numkilos, precio total)
+
+Barcos 0,25 Falta la matricula y el nombre del armador.
+
+Capturas 0 No sabemos en qué caladero se realizaron. Error de Clave en Especies. Error de Clave en Capturas.?????
+
+Precio Pescaderías 0 No se almacena información
+
+Faenas 0 Error de Cardinalidad entre Caladeros y Especies. Error de Clave en Faenas.
+
+Sanciones 0.5
+
+
+Muelles de Carga 0 Error de cardinalidad entre Compradores y Vehículos Autorizados. En días diferentes pueden asignarse muelles diferentes a los compradores. Un comprador puede disponer de varios vehículos. vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+Compras y Compradores 0 Error de Cardinalidad; Un lote no puede tener varias adjudicaciones.vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+FacturasCompras 0 Error de Cardinalidad: En una factura pueden aparecer varios lotes de un mismo comprador.vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+Inspecciones 0 Sólo se almacena el técnico si se detectan irregularidades. Entidad Denuncias innecesaria tal y como lo has diseñado: no se guarda información de la misma. No se almacena el resultado de la inspección--------
+
+Cuotas de Captura 0 No hay información suficiente para saber si un barco ha sobrepasado su cuota de capturas de una especie concreta en un caladero determinado.?????????????????????????bien??????????????????
+
+Credito 0 Error de Especialización: No se realiza. No se almacena la información requerida.
+
+Comisiones Lonja 0 No se almacena información.
+
+Lotes 0,25 Campo Código repetido
+
+Horarios Subastas 0,5
+
+Puntos de Atraque 0.5
+Barcos 0,5
+Capturas 0.5
+Precio Pescaderías 0.5
+Inspecciones 0.5
+Sanciones 0.5
+Cuotas de Captura 0.5
+FacturasCompras 0,5
+Extras 0 No se adjunta enunciado de la parte añadida. Además, en la parte añadida hay un error de clave.?????
+Credito 0 Error de Clave en Compradores a Crédito.?????????
+Compras y Compradores 0 Error de Clave en Adjudicaciones por especialización mal ejecutada.
+Faenas 0.25 Error de Clave en Faenas.????????
+Muelles de Carga 0 En días diferentes pueden asignarse muelles diferentes a los compradores.
+---------------------------------------------------------------------POR RESOLVER----------------------------------------------------------------------
+
+Cuotas 0 Error de Cardinalidad entre Puntos de Atraque y Cuotas. No podemos saber qué cuotas están pagadas y cuáles no.VVVVVVVVVVVV
+
+
+
+
+
+
+Comisiones Lonja 0,25 Error de cardinalidad??????       1/1?
+
+
+
+
+Nota Actual 5.25
+
+
+-----------------------------------------------------------------------PARTE EXTRA---------------------------------------------------------------------
+
+Extras 0 No se detallan
+
+Empresa de reparto: Supongamos que el comprador compra 200 kilos de acedías y no tiene como llevarlo a su pescadería, en ese caso podría contratar un 
+servicio que le entregue el lote comprado a domicilio.vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+Nota Actual 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+Muestra los nombres de los departamentos donde trabajan más de tres empleados que ganen más que la media de los salarios del departamento en el que menos gente trabaja de aquellos en los que trabaja alguien
+
+
+
+
+select dname
+from dept	
+where deptno in (select deptno
+		from emp
+		where sal >(select avg(sal)
+	 		 from emp
+   	  		group by deptno
+	  		having count(*)) = (select deptno,
+		      			  from emp
+		     		 	  group by deptno
+		      			  having COUNT(*)) = (select min(count(*)
+							     from emp
+							     group by deptno))
+		group by deptno
+		having count(*) > 3;
+
+
+
+
+
+
+https://geekland.eu/instalar-las-guest-additions-debian-derivadas/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

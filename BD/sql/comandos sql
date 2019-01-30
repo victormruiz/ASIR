@@ -1,0 +1,8 @@
+tipos de restricciones:
+	clave primaria (PRIMARY KEY)
+	clave ajena (FOREIGN KEY)
+	obligatoriedad (NOT NULL)
+	integridad de datos (CHECK)
+	unidad de datos (UNIQUE)
+	valor por defecto (DEFAULT)
+

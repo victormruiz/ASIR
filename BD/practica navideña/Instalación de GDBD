@@ -1,0 +1,65 @@
+--------------------------------------------------------------------------ORACLE-----------------------------------------------------------------------
+
+Oracle lo he instalado en Windows 10, de forma que es un simple ejecutable en interfaz grafica.
+
+Para acceder a una base de oracle en Windows nos vamos a todos los programas --> Oracle --> SQLPLUS. Al ejecutar este programa se nos abrirá una terminar de SQL en el que accederemos con el usuario scott y la contraseña tiger.
+De esta forma ya podremos insertar tablas y hacer consultas.
+
+
+---------------------------------------------------------------------MARIADB---------------------------------------------------------------------------
+
+Para instalar Mariadb ejecutamos:
+
+	apt-get install mariadb-server
+
+Accedemos a Mariadb como root:
+
+	mysql -u root
+
+creamos un usuarios con privilegios:
+
+	GRANT ALL PRIVILEGES ON *.* TO 'victor'@'localhost'
+IDENTIFIED BY 'victor' WITH GRANT OPTION;
+
+Entro con mi usuario a la base de datos;
+
+	mysql -u victor
+
+creo una base de datos:
+
+	create database futbol;
+
+uso la base de datos creada:
+
+	use futbol
+
+para listar las tablas:
+
+	show tables;
+
+
+-----------------------------------------------------------------------POSTGRES------------------------------------------------------------------------
+
+Instalamos postgres:
+
+	aptitude install postgresql-9.1
+
+Cambiamos la contraseña al usuario postgress:
+
+	passwd postgres
+
+entramos con dicho usuario y accedemos a la base de datos:
+
+	su postgres
+	psql
+
+Para crear la base de datos:
+
+	createdb practica;
+
+Para conectarse a la base de datos:
+
+	psql -u root practica
+
+
+

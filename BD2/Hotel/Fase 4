@@ -1,0 +1,564 @@
+-- FASE 4 --
+1. 
+create or replace function ComprobarPago(p_nif personas.nif%type, p_codigoactividad actividades.codigo%type)
+return NUMBER
+is
+    v_abonado            actividadesrealizadas.abonado%type;   
+begin
+    ClienteInexistente(p_nif);
+    ActividadInexistente(p_codigoactividad);
+    ActividadRealizadaTI(p_codigoactividad,p_nif);
+    ActividadnoRealizada(p_codigoactividad, p_nif);
+    select Abonado into v_abonado
+    from Estancias e, ActividadesRealizadas ar
+    where e.Codigo = ar.CodigoEstancia
+    and ar.Fecha = ( select max(Fecha)
+                     from actividadesrealizadas
+                     where codigoactividad = p_codigoactividad
+                     group by codigoestancia)
+    and e.NIFCliente = p_nif;
+    return v_abonado;
+end ComprobarPago;
+/
+
+-- INSERT INTO Personas (NIF,Nombre,Apellidos,Direccion,Localidad) VALUES ('12345678A','Pepe','Perez','c/ Amapolo','Parla(Madrid)');
+-- INSERT INTO Habitaciones (Numero,CodigoTipo) VALUES ('13','3');
+-- INSERT INTO Estancias (Codigo,FechaInicio,FechaFin,NumeroHabitacion,NIFResponsable,NIFCliente,CodigoRegimen) VALUES ('13',TO_DATE('01/05/2018','DD/MM/YYYY'),TO_DATE('10/05/2018 20:12','DD/MM/YYYY HH24:MI'),'13','12345678A','12345678A','TI');
+-- INSERT INTO ActividadesRealizadas (CodigoEstancia,CodigoActividad,Fecha,NumPersonas,Abonado) VALUES ('13','P-7853',TO_DATE('03/05/2018 12:15','DD/MM/YYYY HH24:MI'),'2',0);
+-- INSERT INTO ActividadesRealizadas (CodigoEstancia,CodigoActividad,Fecha,NumPersonas,Abonado) VALUES ('13','A-1234',TO_DATE('04/05/2018 12:15','DD/MM/YYYY HH24:MI'),'2',0);
+-- INSERT INTO ActividadesRealizadas (CodigoEstancia,CodigoActividad,Fecha,NumPersonas,Abonado) VALUES ('13','B-4000',TO_DATE('05/05/2018 12:15','DD/MM/YYYY HH24:MI'),'2',0);
+-- INSERT INTO ActividadesRealizadas (CodigoEstancia,CodigoActividad,Fecha,NumPersonas,Abonado) VALUES ('10','B-4000',TO_DATE('25/03/2018 12:15','DD/MM/YYYY HH24:MI'),'2',1);
+
+
+-- select ComprobarPago('54725316J','B-4000') from dual;
+-- select ComprobarPago('54725316J','S-6520') from dual;
+-- select ComprobarPago('22845490G','M-8975') from dual;
+-- select ComprobarPago('43550157W','P-7853') from dual;
+-- select ComprobarPago('12318446Z','A-1234') from dual;
+-- select ComprobarPago('43550157W','P-7853') from dual;
+
+create or replace procedure ClienteInexistente(p_nif personas.nif%type)
+is 
+    v_nif       number;
+begin
+    select count(*) into v_nif
+    from Personas
+    where nif = p_nif;
+    if v_nif = 0 then       
+        raise_application_error(-20001,'El cliente no existe');
+    end if;
+end ClienteInexistente;
+/
+
+create or replace procedure ActividadInexistente(p_codigoactividad actividades.codigo%type)
+is 
+    v_actividades number;
+begin
+    select count(*) into v_actividades
+    from actividades
+    where codigo = p_codigoactividad;
+    if v_actividades = 0 then
+        raise_application_error(-20003,'La activdad no existe');
+    end if;
+end ActividadInexistente;
+/
+
+create or replace procedure ActividadRealizadaTI(p_codigoactividad actividades.codigo%type, p_nif estancias.nifcliente%type)
+is 
+    v_actividad number;
+begin
+    select count(*) into v_actividad
+    from ActividadesRealizadas
+    where CodigoActividad = p_codigoactividad
+    and CodigoEstancia in ( select Codigo 
+                            from Estancias 
+                            where NIFCliente = p_nif
+                            and CodigoRegimen = 'TI');
+    if v_actividad = 0 then
+        raise_application_error(-20002,'Actividad no realizada en el regimen TI');
+    end if;
+end ActividadRealizadaTI;
+/
+
+create or replace procedure ActividadnoRealizada(p_codigoactividad actividades.codigo%type , p_codigocliente personas.nif%type)
+is
+    v_actividadnorealizada  number;
+begin 
+    select count(CodigoActividad) into v_actividadnorealizada
+    from ActividadesRealizadas
+    where CodigoActividad = p_codigoactividad
+    and codigoestancia in ( select codigo 
+                            from estancias
+                            where NIFCliente = p_codigocliente);
+
+    if v_actividadnorealizada = 0 then
+        raise_application_error(-20005,'Ningun cliente ha realizado esa actividad');
+    end if;
+end ActividadnoRealizada;
+/
+
+2.
+create or replace procedure Informes(p_codigoestancia estancias.codigo%type)
+is
+    v_totalgastos number:=0;
+begin
+    MostrarCabecera(p_codigoestancia);
+    MostrarDatos(p_codigoestancia);
+    MostrarAlojamientos(p_codigoestancia,v_totalgastos);
+    MostrarGastosExtras(p_codigoestancia,v_totalgastos);
+    MostrarActividades(p_codigoestancia,v_totalgastos);
+    dbms_output.put_line('Importe Factura: '||v_totalgastos);
+end Informes;
+/
+
+create or replace procedure MostrarCabecera(p_codigoestancia estancias.codigo%type)
+is
+begin
+    dbms_output.put_line('Complejo Rural La Fuente');
+    dbms_output.put_line('Candelario(Salamanca)');
+end MostrarCabecera;
+/
+
+create or replace procedure MostrarDatos(p_codigoestancia estancias.codigo%type)
+is
+    v_nombre    personas.nombre%type;
+    v_apellidos personas.apellidos%type;
+    v_numhabitacion estancias.NumeroHabitacion%type;
+    v_fechainicio   estancias.FechaInicio%type;
+    v_fechafin      estancias.FechaFin%type;
+    v_codregimen    estancias.codigoregimen%type;
+
+begin 
+    select Nombre, Apellidos, NumeroHabitacion, FechaInicio, FechaFin, CodigoRegimen into v_nombre,v_apellidos,v_numhabitacion,v_fechainicio,v_fechafin,v_codregimen
+    from estancias e, personas p 
+    where e.NIFResponsable = p.nif
+    and e.codigo = p_codigoestancia;
+    dbms_output.put_line('Codigo Estancia: '||p_codigoestancia);
+    dbms_output.put_line('Cliente: '||v_nombre||' '||v_apellidos);
+    dbms_output.put_line('Numero Habitación: '||v_numhabitacion||'   '||'Fecha Inicio: '||v_fechainicio||'   '||'Fecha Fin: '||v_fechafin);
+    dbms_output.put_line('Regimen de alojamiento: '||v_codregimen);
+end MostrarDatos;
+/
+
+create or replace procedure MostrarAlojamientos(p_codigoestancia estancias.codigo%type, v_totalgastos in out number)
+is
+    cursor c_alojamientos
+    is
+    select t.nombre as Temporada, trunc(e.FechaFin) - trunc(e.FechaInicio) as NumDias, tar.Preciopordia as Preciopordia
+    from estancias e, temporadas t, tarifas tar, regimenes r
+    where e.codigoregimen = r.codigo 
+    and r.codigo = tar.CodigoRegimen
+    and tar.codigotemporada = t.codigo 
+    and e.codigo = p_codigoestancia;
+    v_alojamientos  number:=0;
+begin 
+    for i in c_alojamientos loop
+        dbms_output.put_line(i.Temporada||'  '||i.NumDias||'  '||i.Preciopordia*i.NumDias);
+        v_alojamientos:=v_alojamientos+(i.Preciopordia*i.NumDias);
+    end loop;
+    dbms_output.put_line('Importe Total Alojamiento: '||v_alojamientos);
+    v_totalgastos:=v_totalgastos + v_alojamientos;
+end MostrarAlojamientos;
+/
+
+create or replace procedure MostrarGastosExtras(p_codigoestancia estancias.codigo%type, v_totalgastos in out number)
+is
+    cursor c_gastos
+    is
+    select fecha,concepto,cuantia
+    from gastosextras;
+    v_gastos    number:=0;
+    v_regimen   regimenes.codigo%type;
+    v_fecha     gastosextras.fecha%type;
+    v_concepto  gastosextras.concepto%type;
+    v_cuantia   gastosextras.cuantia%type;
+begin
+    ComprobarRegimen(p_codigoestancia, v_regimen);
+    open c_gastos;
+    fetch c_gastos into v_fecha,v_concepto,v_cuantia;
+    if c_gastos%rowcount = 0 or v_regimen = 'TI' then
+        dbms_output.put_line(' ');
+    else
+        while c_gastos%found loop
+            dbms_output.put_line(v_fecha||'  '||v_concepto||'  '||v_cuantia);
+            v_gastos:=v_gastos + v_cuantia;
+            fetch c_gastos into v_fecha,v_concepto,v_cuantia;
+        end loop;
+    end if;
+    dbms_output.put_line('Importe Gastos Extras: '||v_gastos);
+    close c_gastos;
+    v_totalgastos:=v_totalgastos + v_gastos;
+end  MostrarGastosExtras;
+/
+
+
+create or replace procedure ComprobarRegimen(p_codigoestancia estancias.codigo%type, v_regimen in out regimenes.codigo%type)
+is
+    v_codigo    estancias.codigoregimen%type;
+begin
+    select CodigoRegimen into v_codigo
+    from estancias
+    where codigo = p_codigoestancia;
+    v_regimen:=v_codigo;
+end ComprobarRegimen;
+/
+
+create or replace procedure MostrarActividades(p_codigoestancia estancias.codigo%type, v_totalgastos in out number)
+is
+    cursor c_actividades
+    is
+    select ar.Fecha, a.Nombre, ar.NumPersonas, a.Precioporpersona
+    from actividades a, actividadesrealizadas ar
+    where a.Codigo = ar.CodigoActividad
+    and ar.codigoestancia = p_codigoestancia;
+    v_total     number:=0;
+    v_regimen   regimenes.codigo%type;
+    v_fecha     ActividadesRealizadas.fecha%type;
+    v_nombre    Actividades.nombre%type;
+    v_numpersonas   ActividadesRealizadas.NumPersonas%type;
+    v_precio        actividades.precioporpersona%type;
+begin
+    ComprobarRegimen(p_codigoestancia,v_regimen);
+    open c_actividades;
+    fetch c_actividades into v_fecha,v_nombre,v_numpersonas,v_precio;
+    if c_actividades%rowcount = 0 or v_regimen = 'TI' then
+        dbms_output.put_line(' ');
+    else
+        while c_actividades%found loop
+            dbms_output.put_line(v_fecha||'  '||v_nombre||'  '||v_numpersonas||'  '||v_numpersonas*v_precio);
+            v_total:=v_total + (v_numpersonas*v_precio);
+            fetch c_actividades into v_fecha,v_nombre,v_numpersonas,v_precio;
+        end loop;
+    end if;
+    dbms_output.put_line('Importe Totla Actividades Realizadas: '||v_total);
+    close c_actividades;
+    v_totalgastos:=v_totalgastos + v_total;
+end MostrarActividades;
+/
+
+3.
+create or replace trigger Abonaciones
+before insert on ActividadesRealizadas 
+for each row
+declare
+    v_regimen estancias.codigoregimen%type;
+begin
+    select CodigoRegimen into v_regimen
+    from Estancias
+    where codigo = :new.CodigoEstancia;
+    if v_regimen = 'TI' and :new.abonado = 0 then
+        raise_application_error(-20009,'El campo Abonado no puede valer 0');
+    end if;
+end Abonaciones;
+/
+
+
+-- INSERT INTO ActividadesRealizadas (CodigoEstancia,CodigoActividad,Fecha,NumPersonas,Abonado) VALUES ('13','A-1234',TO_DATE('02/01/2018 15:00','DD/MM/YYYY HH24:MI'),'1',0);
+-- INSERT INTO Estancias (Codigo,FechaInicio,FechaFin,NumeroHabitacion,NIFResponsable,NIFCliente,CodigoRegimen) VALUES ('13',TO_DATE('01/05/2018','DD/MM/YYYY'),TO_DATE('05/05/2018 20:12','DD/MM/YYYY HH24:MI'),'12','43550157W','43550157W','TI');
+
+4.
+-- SIN HACER --
+5.
+-- SIN HACER --
+
+
+6. 
+create or replace package Ejercicio6
+as 
+    TYPE TRegistro is Record
+    (
+        Codigo          actividadesrealizadas.CodigoActividad%type,
+        NumPersonas     NUMBER,
+        Fecha           DATE
+    );
+    TYPE tTabla IS TABLE OF TRegistro INDEX BY BINARY_INTEGER;
+    v_tabla tTabla;
+END Ejercicio6;
+/
+
+create or replace trigger PorSentencia
+before insert or update on ActividadesRealizadas
+declare 
+    cursor c_actividades2
+    is 
+    select Codigo, sum(NumPersonas) as NumPersonas, Fecha
+    from Actividades a, ActividadesRealizadas ar
+    where a.Codigo = ar.CodigoActividad
+    group by Codigo, Fecha;
+    i               number:=0;
+    v_codigo        actividades.codigo%type;
+    v_numpersonas   ActividadesRealizadas.NumPersonas%type;
+    v_fecha         date;
+begin
+    open c_actividades2;
+    fetch c_actividades2 into v_codigo,v_numpersonas,v_fecha;
+    while c_actividades2%found loop
+        Ejercicio6.v_tabla(i).Codigo:=v_codigo;
+        Ejercicio6.v_tabla(i).NumPersonas:=v_numpersonas;
+        Ejercicio6.v_tabla(i).Fecha:=v_fecha;
+        i:=i + 1;
+        fetch c_actividades2 into v_codigo,v_numpersonas,v_fecha;
+    end loop;
+    close c_actividades2;
+end PorSentencia;
+/
+
+create or replace trigger PorFila
+before insert or update on ActividadesRealizadas
+for each row 
+declare     
+begin 
+    for i in Ejercicio6.v_tabla.FIRST..Ejercicio6.v_tabla.LAST loop
+        if Ejercicio6.v_tabla(i).Fecha = :new.Fecha and Ejercicio6.v_tabla(i).NumPersonas > 10 and Ejercicio6.v_tabla(i).Codigo = :new.CodigoActividad then
+            raise_application_error(-20014,'No se puede realizar una actividad en una fecha concreta por más de 10 personas');
+        end if;
+    end loop;
+
+    Ejercicio6.v_tabla(Ejercicio6.v_tabla.LAST+1).Codigo:=:new.CodigoActividad;
+    Ejercicio6.v_tabla(Ejercicio6.v_tabla.LAST).NumPersonas:=:new.NumPersonas;
+    Ejercicio6.v_tabla(Ejercicio6.v_tabla.LAST).Fecha:=:new.Fecha;
+
+end PorFila;
+/
+
+7.  
+create or replace package Ejercicio7
+as 
+    TYPE TRegistro is Record
+    (
+        TipoHabitacion          tarifas.CodigoTipohabitacion%type,
+        Temporada               tarifas.CodigoTemporada%type,
+        CodigoRegimen           tarifas.CodigoRegimen%type,
+        Preciopordia            tarifas.Preciopordia%type
+    );
+    TYPE tTabla IS TABLE OF TRegistro INDEX BY BINARY_INTEGER;
+    v_Facturas tTabla;
+end Ejercicio7;
+/
+
+create or replace trigger PorSentencia2
+before insert or update on Tarifas
+declare 
+    cursor c_tarifas
+    is 
+    select CodigoTipohabitacion, CodigoTemporada, CodigoRegimen, Preciopordia
+    from tarifas;
+    indice          number:=0;
+begin
+    for i in c_tarifas loop 
+        Ejercicio7.v_Facturas(indice).TipoHabitacion:=i.CodigoTipohabitacion;
+        Ejercicio7.v_Facturas(indice).Temporada:=i.CodigoTemporada;
+        Ejercicio7.v_Facturas(indice).CodigoRegimen:=i.CodigoRegimen;
+        Ejercicio7.v_Facturas(indice).Preciopordia:=i.Preciopordia;
+        indice:=indice + 1;
+    end loop;
+end PorSentencia2;
+/
+
+create or replace trigger PorFila2
+before insert or update on Tarifas
+for each row 
+declare
+    v_precioti      number:=0;
+    v_preciopc      number:=0;
+    v_preciomp      number:=0;
+    v_precioad      number:=0;
+begin
+    for i in Ejercicio7.v_Facturas.FIRST..Ejercicio7.v_Facturas.LAST loop
+        if :new.CodigoTipohabitacion = Ejercicio7.v_Facturas(i).TipoHabitacion and :new.codigotemporada = Ejercicio7.v_Facturas(i).Temporada then
+            case 
+                when Ejercicio7.v_Facturas(i).CodigoRegimen = 'TI' then
+                    v_precioti:=Ejercicio7.v_Facturas.Preciopordia;
+                when Ejercicio7.v_Facturas(i).CodigoRegimen = 'PC' then
+                    v_preciopc:=Ejercicio7.v_Facturas.Preciopordia;
+                when Ejercicio7.v_Facturas(i).CodigoRegimen = 'MP' then
+                    v_preciomp:=Ejercicio7.v_Facturas.Preciopordia;
+                when Ejercicio7.v_Facturas(i).CodigoRegimen = 'AD' then
+                    v_precioad:=Ejercicio7.v_Facturas.Preciopordia;
+            end case;   
+        end if; 
+    end loop;
+    ActualizarPrecios(:new.CodigoRegimen,:new.Preciopordia,v_precioti,v_preciopc,v_preciomp,v_precioad); 
+    if v_precioti < v_preciopc or v_preciopc < v_preciomp or v_preciomp < v_precioad then
+        raise_application_error(-20020,'Los precios son erróneos');
+    end if;
+
+    Ejercicio7.v_Facturas(Ejercicio7.v_Facturas.LAST+1).TipoHabitacion:=:new.codigoTipoHabitacion;
+    Ejercicio7.v_Facturas(Ejercicio7.v_Facturas.LAST).Temporada:=:new.codigotemporada;
+    Ejercicio7.v_Facturas(Ejercicio7.v_Facturas.LAST).CodigoRegimen:=:new.codigoregimen;
+    Ejercicio7.v_Facturas(Ejercicio7.v_Facturas.LAST).Preciopordia:=:new.Preciopordia;
+
+end PorFila2;
+/
+
+create or replace procedure ActualizarPrecios(p_codigoregimen     tarifas.Codigoregimen%type,
+                                              p_preciopordia      tarifas.Preciopordia%type,
+                                              v_precioti          in out number,
+                                              v_preciopc          in out number,
+                                              v_preciomp          in out number,
+                                              v_precioad          in out number)
+is 
+begin
+    case 
+        when p_codigoregimen = 'TI' then
+            v_precioti:=p_preciopordia;
+        when p_codigoregimen = 'PC' then
+            v_preciopc:=p_preciopordia; 
+        when p_codigoregimen = 'MP' then
+            v_preciomp:=p_preciopordia; 
+        when p_codigoregimen = 'AD' then
+            v_precioad:=p_preciopordia;
+        end case;
+end ActualizarPrecios;
+/
+
+8. 
+create or replace package Ejercicio8
+as
+type TEstancias is Record
+(
+    NIFCliente  personas.nif%type,
+    FechaInicio DATE,
+    FechaFin    DATE
+);
+type tTablaEstancias is table of TEstancias index by BINARY_INTEGER;
+v_tablaEstancias    tTablaEstancias;
+end Ejercicio8;
+/
+
+create or replace trigger PorSentencia3
+before insert or update on Estancias
+declare 
+    cursor c_estancias
+    is
+    select NIFCliente,FechaInicio,FechaFin
+    from Estancias;
+    i               number:=0;
+    v_nifcliente    personas.nif%type;
+    v_fechainicio   DATE;
+    v_fechafin      DATE;
+begin 
+    open c_estancias;
+    fetch c_estancias into v_nifcliente,v_fechainicio,v_fechafin;
+    while c_estancias%found loop
+        Ejercicio8.v_tablaEstancias(i).NIFCliente:=v_nifcliente;
+        Ejercicio8.v_tablaEstancias(i).FechaInicio:=v_fechainicio;
+        Ejercicio8.v_tablaEstancias(i).FechaFin:=v_fechafin;
+        i:=i+1;
+        fetch c_estancias into v_nifcliente,v_fechainicio,v_fechafin;
+    end loop;
+    close c_estancias;
+end PorSentencia3;
+/
+
+create or replace trigger PorFila3
+before insert or update on Estancias
+for each row
+declare 
+begin
+    for k in Ejercicio8.v_tablaEstancias.FIRST..Ejercicio8.v_tablaEstancias.LAST loop
+        if :new.FechaInicio between Ejercicio8.v_tablaEstancias(k).FechaInicio and Ejercicio8.v_tablaEstancias(k).FechaFin and Ejercicio8.v_tablaEstancias(k).NIFCliente = :new.NIFCliente then
+            raise_application_error(-20017,'No puedes comenzar una estancia hasta que no termine la anterior');
+        end if;
+    end loop;
+
+    Ejercicio8.v_tablaEstancias(Ejercicio8.v_tablaEstancias.LAST+1).NIFCliente:=:new.NIFCliente;
+    Ejercicio8.v_tablaEstancias(Ejercicio8.v_tablaEstancias.LAST).FechaInicio:=:new.FechaInicio;
+    Ejercicio8.v_tablaEstancias(Ejercicio8.v_tablaEstancias.LAST).FechaFin:=:new.FechaFin;
+
+end PorFila3;
+/
+
+-- PL/PGSQL --
+Ejericio 1.
+create or replace function ComprobarPago(p_nif personas.nif%type, p_codigoactividad actividades.codigo%type)
+return integer as $funcion$
+declare
+    v_abonado            actividadesrealizadas.abonado%type;   
+begin
+    select * from ClienteInexistente(p_nif);
+    select * from ActividadInexistente(p_codigoactividad);
+    select * from ActividadRealizadaTI(p_codigoactividad,p_nif);
+    select * from ActividadnoRealizada(p_codigoactividad, p_nif);
+    select Abonado into v_abonado
+    from Estancias e, ActividadesRealizadas ar
+    where e.Codigo = ar.CodigoEstancia
+    and ar.Fecha = ( select max(Fecha)
+                     from actividadesrealizadas
+                     where codigoactividad = p_codigoactividad
+                     group by codigoestancia)
+    and e.NIFCliente = p_nif;
+    return v_abonado;
+end ComprobarPago;
+$funcion$ language plpgsql;
+
+create or replace function ActividadInexistente(p_codigoactividad actividades.codigo%type) returns varchar as $$
+declare
+    v_actividades integer;
+begin
+    select count(*) into v_actividades
+    from actividades
+    where codigo = p_codigoactividad;
+    if v_actividades = 0 then
+        raise notice 'La actividad no existe';
+    end if;
+end ActividadInexistente;
+$$ language plpgsql;
+
+create or replace procedure ActividadRealizadaTI(p_codigoactividad actividades.codigo%type, p_nif estancias.nifcliente%type) returns varchar as $$
+declare
+    v_actividad integer;
+begin
+    select count(*) into v_actividad
+    from ActividadesRealizadas
+    where CodigoActividad = p_codigoactividad
+    and CodigoEstancia in ( select Codigo 
+                            from Estancias 
+                            where NIFCliente = p_nif
+                            and CodigoRegimen = 'TI');
+    if v_actividad = 0 then
+        raise notice 'Actividad no realizada en el regimen TI';
+    end if;
+end ActividadRealizadaTI;
+$$ language plpgsql;
+
+create or replace function ActividadnoRealizada(p_codigoactividad actividades.codigo%type , p_codigocliente personas.nif%type) returns varchar as $$
+declare
+    v_actividadnorealizada  integer;
+begin 
+    select count(CodigoActividad) into v_actividadnorealizada
+    from ActividadesRealizadas
+    where CodigoActividad = p_codigoactividad
+    and codigoestancia in ( select codigo 
+                            from estancias
+                            where NIFCliente = p_codigocliente);
+
+     if v_actividadnorealizada = 0 then
+        raise notice 'Ningun cliente ha realizado esa actividad';
+    end if;
+end ActividadnoRealizada;
+$$ language plpgsql;
+
+Ejercicio 3. 
+create trigger Abonaciones 
+before insert on ActividadesRealizadas
+for each row
+execute procedure insertar_trigger();
+
+create or replace function insertar_trigger() returns trigger as $$
+before insert on ActividadesRealizadas 
+for each row
+declare
+    v_regimen estancias.codigoregimen%type;
+begin
+    select CodigoRegimen into v_regimen
+    from Estancias
+    where codigo = :new.CodigoEstancia;
+    if v_regimen = 'TI' and :new.abonado = 0 then
+        raise notice 'El campo Abonado no puede valer 0';
+    end if;
+end Abonaciones;
+$$ language plpgslq;
+
+
+

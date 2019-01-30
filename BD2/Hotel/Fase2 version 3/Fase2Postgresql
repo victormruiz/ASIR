@@ -1,0 +1,127 @@
+create table Temporadas
+(
+    Codigo VARCHAR(1),
+    Nombre VARCHAR(50),
+    CONSTRAINT cod1_key PRIMARY KEY(Codigo),
+    CONSTRAINT nombre_ok   UNIQUE(Nombre)
+);
+
+create table Regimenes
+(
+    Codigo  VARCHAR(2),
+    Nombre  VARCHAR(50),
+    CONSTRAINT cod_key PRIMARY KEY (Codigo),
+    CONSTRAINT codi2_ok CHECK(Codigo in ('AD','MP','PC','TI')),
+    CONSTRAINT nombre_ok   UNIQUE(Nombre)
+);
+
+create table TiposdeHabitacion
+(
+    Codigo  VARCHAR(1),
+    Nombre  VARCHAR(50),
+    CONSTRAINT codi_key PRIMARY KEY (Codigo),
+    CONSTRAINT nombre_ok   UNIQUE(Nombre)
+);
+
+create table Tarifas
+(
+    Codigo          VARCHAR(2),
+    CodigoTipoHabitacion    VARCHAR(1),
+    CodigoTemporada     VARCHAR(1),
+    CodigoRegimen       VARCHAR(2),
+    PrecioporDia        NUMERIC(6,2),
+    CONSTRAINT codig_key    PRIMARY KEY (Codigo),
+    CONSTRAINT codtipha_key FOREIGN KEY (CodigoTipoHabitacion) REFERENCES TiposdeHabitacion(Codigo),
+    CONSTRAINT codtemp_key  FOREIGN KEY (CodigoTemporada) REFERENCES Temporadas(Codigo),
+    CONSTRAINT codreg_key   FOREIGN KEY (CodigoRegimen) REFERENCES Regimenes(Codigo)
+);
+
+create table Personas
+(
+    NIF     VARCHAR(9) CONSTRAINT nif2_ok NOT NULL,
+    Nombre      VARCHAR(50) CONSTRAINT nombre_ok NOT NULL,
+    Apellidos   VARCHAR(50) CONSTRAINT apellido_ok NOT NULL,
+    Direccion   VARCHAR(50) CONSTRAINT direccio_ok NOT NULL,
+    Localidad   VARCHAR(50) CONSTRAINT locality_ok NOT NULL,
+    CONSTRAINT nif_key  PRIMARY KEY (NIF),
+    CONSTRAINT nif_ok   CHECK(NIF ~ '^[0-9]{8}[A-Z]$|^[KLMXYZ][0-9]{7}[A-Z]$'),
+    CONSTRAINT local_ok CHECK(Localidad LIKE '%(Salamanca)%' OR Localidad LIKE '%(Avila)%' OR Localidad LIKE '%(Madrid)%'),
+    CONSTRAINT dir_ok   UNIQUE(Direccion)
+);
+
+create table Habitaciones
+(
+    Numero      VARCHAR(2),
+    CodigoTipo  VARCHAR(1),
+    CONSTRAINT num_key  PRIMARY KEY (Numero),
+    CONSTRAINT codtipo_key  FOREIGN KEY (CodigoTipo) REFERENCES TiposdeHabitacion(Codigo)
+);
+
+create table Estancias
+(
+    Codigo          VARCHAR(5),
+    FechaInicio     DATE,
+    FechaFin        DATE,
+    NumeroHabitacion    VARCHAR(2),
+    NIFResponsable      VARCHAR(9),
+    NIFCliente      VARCHAR(9),
+    CodigoRegimen       VARCHAR(2),
+    CONSTRAINT codigo_key   PRIMARY KEY (Codigo),
+    CONSTRAINT numhab_key   FOREIGN KEY (NumeroHabitacion) REFERENCES Habitaciones(Numero),
+    CONSTRAINT nifres_key  FOREIGN KEY (NIFResponsable) REFERENCES Personas(NIF),
+    CONSTRAINT nif2_key FOREIGN KEY (NIFCliente) REFERENCES Personas(NIF),
+    CONSTRAINT codreg2_key   FOREIGN KEY (CodigoRegimen) REFERENCES Regimenes(Codigo),
+    CONSTRAINT nifres_ok    CHECK(NIFResponsable ~ '^[0-9]{8}[A-Z]$|^[KLMXYZ][0-9]{7}[A-Z]$'),
+    CONSTRAINT nifcli_ok    CHECK(NIFCliente ~ '^[0-9]{8}[A-Z]$|^[KLMXYZ][0-9]{7}[A-Z]$'),
+    CONSTRAINT fechafin_ok  CHECK(TO_CHAR(FechaFin, 'HH24:MI') < '21:00')
+);
+
+create table Facturas
+(
+    Numero      VARCHAR(5),
+    CodigoEstancia  VARCHAR(2),
+    Fecha       DATE,
+    CONSTRAINT numero_key   PRIMARY KEY (Numero), 
+    CONSTRAINT codestan_key FOREIGN KEY (CodigoEstancia) REFERENCES Estancias(Codigo)
+);
+
+create table GastosExtras
+(
+    CodigoGasto VARCHAR(5),
+    CodigoEstancia  VARCHAR(2),
+    Fecha       DATE,
+    Concepto    VARCHAR(40),
+    Cuantia     NUMERIC(5,2),
+    CONSTRAINT codgas_key   PRIMARY KEY (CodigoGasto),
+    CONSTRAINT codestan2_key FOREIGN KEY (CodigoEstancia) REFERENCES Estancias(Codigo)           
+);
+
+create table Actividades
+(
+    Codigo          VARCHAR(7),
+    Nombre          VARCHAR(40),
+    Descripcion     VARCHAR(40),
+    PrecioporPersona    NUMERIC(6,2),
+    ComisionHotel       NUMERIC(6,2),
+    CostePersonaHotel   NUMERIC(6,2),
+    CONSTRAINT codig2_key    PRIMARY KEY (Codigo),
+    CONSTRAINT cod_ok   CHECK(REGEXP_LIKE(Codigo, '^[A-Z]\-[0-9]{4,10}$')),
+    CONSTRAINT comi_ok  CHECK(trunc(ComisionHotel,2) < ComisionHotel * 0.25),
+    CONSTRAINT nombre_ok   UNIQUE(Nombre)
+);
+
+create table ActividadesRealizadas
+(
+    CodigoEstancia      VARCHAR(2),
+    CodigoActividad     VARCHAR(7),
+    Fecha           DATE,
+    NumPersonas     VARCHAR(2) DEFAULT 1,
+    Abonado         NUMERIC(1), -- Si es 0: No se ha abonado ; Si es 1: Si se ha abonado
+    CONSTRAINT pk_key   PRIMARY KEY (CodigoEstancia, CodigoActividad, Fecha),
+    CONSTRAINT codesta_key  FOREIGN KEY (CodigoEstancia) REFERENCES Estancias(Codigo),
+    CONSTRAINT codacti_key  FOREIGN KEY (CodigoActividad) REFERENCES Actividades(Codigo),
+    CONSTRAINT fecha_ok CHECK(TO_CHAR(Fecha, 'day') != 'Lunes'),
+    CONSTRAINT fecha2_ok    CHECK(TO_CHAR(Fecha, 'HH24:MI') not between '00:00' and '05:59')
+    
+    
+);

@@ -1,0 +1,284 @@
+
+-----------------------------------CREAR 1 MAQUINA VIRTUAL CONECTADA CON 1 INTERFAZ DE RED A UN BRIDGE-------------------------------------------------
+
+*************************************************************(SUPERUSUARIO!!!!!)***********************************************************************
+
+###Creamos un TAP y se lo asignamos al usuario que queramos###
+
+	ip tuntap add mode tap user user
+
+###Listamos los TAP###
+
+	ip tuntap list
+
+###Conectamos el TAP que queramos al bridge###
+
+	brctl addif br0 tap0
+
+###Levantamos el TAP###
+
+	ip l set dev tap0 up
+
+
+********************************************************************(USUARIO NORMAL!!!!!)**************************************************************
+
+###Creamos una variable con la que vamos a asignarle la MAC a la interfaz de red virtual###
+
+	MAC0=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+
+###Nos movemos al directorio donde tengamos la imagen y ejecutamos el siguiente código para levantar nuestra máquina###
+
+	qemu-system-x86_64 -m 512 -hda jessie-1.qcow2 -device virtio-net,netdev=n0,mac=$MAC0 -netdev tap,id=n0,ifname=tap0,script=no,downscript=no &
+
+
+------------------------------------CREAR 1 MAQUINA VIRTUAL CONECTADA CON 2 INTERFACES DE RED A UN BRIDGE----------------------------------------------
+
+
+*************************************************************(SUPERUSUARIO!!!!!)***********************************************************************
+
+###Creamos dos TAPs y se lo asignamos al usuario que queramos###
+
+	ip tuntap add mode tap user user
+	ip tuntap add mode tap user user
+
+###Listamos los TAP###
+
+	ip tuntap list
+
+###Conectamos los TAPs que queramos al bridge###
+
+	brctl addif br0 tap0
+	brctl addif br0 tap1
+
+###Levantamos los TAPs###
+
+	ip l set dev tap0 up
+	ip l set dev tap1 up
+
+
+********************************************************************(USUARIO NORMAL!!!)**************************************************************
+
+###Creamos dos variables con la que vamos a asignarle la MAC a las interfaces de red virtual###
+
+	MAC0=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+	MAC1=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+
+###Nos movemos al directorio donde tengamos la imagen y ejecutamos el siguiente código para levantar nuestra máquina con 2 interfaces###
+
+
+	qemu-system-x86_64 -m 512 -hda jessie-1.qcow2 -device virtio-net,netdev=n0,mac=$MAC0 -netdev tap,id=n0,ifname=tap0,script=no,downscript=no -device virtio-net,netdev=n1,mac=$MAC1 -netdev tap,id=n1,ifname=tap1,script=no,downscript=no&
+
+
+
+------------------------------CREAR 2 MAQUINAS VIRTUALES CON DISCOS DE APROVISIONAMIENTO LIGERO--------------------------------------------------------
+
+
+*************************************************************(SUPERUSUARIO!!!!!)***********************************************************************
+
+###Creamos dos TAPs y se lo asignamos al usuario que queramos###
+
+	ip tuntap add mode tap user user
+	ip tuntap add mode tap user user
+
+###Listamos los TAP###
+
+	ip tuntap list
+
+###Conectamos los TAPs que queramos al bridge###
+
+	brctl addif br0 tap0
+	brctl addif br0 tap1
+
+###Levantamos los TAPs###
+
+	ip l set dev tap0 up
+	ip l set dev tap0 up
+
+
+********************************************************************(USUARIO NORMAL!!!!!)**************************************************************
+
+###Creamos los discos virtuales basados en el orginal que vamos a conectar a las maquinas###
+
+	qemu-img create -b jessie-1.qcow2 -f qcow2 jessie-min1.qcow2
+	qemu-img create -b jessie-1.qcow2 -f qcow2 jessie-min2.qcow2
+
+
+###Creamos dos variables con la que vamos a asignarle la MAC a las interfaces de red virtual###
+
+	MAC0=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+	MAC1=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+
+###Nos movemos al directorio donde tengamos la imagen y ejecutamos el siguiente código para levantar nuestras 2 máquinas###
+
+
+	qemu-system-x86_64 -m 512 -hda jessie-min1.qcow2 -device virtio-net,netdev=n0,mac=$MAC0 -netdev tap,id=n0,ifname=tap0,script=no,downscript=no&
+	qemu-system-x86_64 -m 512 -hda jessie-min2.qcow2 -device virtio-net,netdev=n1,mac=$MAC1 -netdev tap,id=n1,ifname=tap1,script=no,downscript=no&
+
+
+
+-----------------------------------------------------------------------CREAR VLAN----------------------------------------------------------------------
+
+*************************************************************(SUPERUSUARIO!!!!!)***********************************************************************
+
+###Primero creamos el bridge###
+
+	sudo ip l add name br1 type bridge
+
+###Creamos la interfaz de vlan virtual###
+
+	sudo ip l add name eth0.11 link eth0 type vlan id 11
+
+###Conectamos la interfaz VLAN creada al bridge que hemos creado###
+
+	sudo ip l set dev eth0.11 master br1
+
+###Creamos un TAP y se lo asignamos al usuario que queramos###
+
+	sudo ip tuntap add mode tap user victor
+
+###Conectamos el TAP que queramos al bridge###
+
+	sudo brctl addif br1 tap0
+
+###Levantamos el TAP###
+
+	sudo ip l set dev tap0 up
+
+###Levantamos el Bridge###
+
+	sudo ip l set dev br1 up
+
+###Levantamos eth0.xx ###
+
+	sudo ip l set dev eth0.11 up
+
+###Levantamos eth0 ###
+
+	sudo ip l set dev eth0 up
+
+********************************************************************(USUARIO NORMAL!!!!!)**************************************************************
+
+##Creamos una variable con la que vamos a asignarle la MAC a la interfaz de red virtual###
+
+	MAC0=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+
+###Nos movemos al directorio donde tengamos la imagen y ejecutamos el siguiente código para levantar nuestra máquina###
+
+	qemu-system-x86_64 -m 512 -hda jessie-1.qcow2 -device virtio-net,netdev=n0,mac=$MAC0 -netdev tap,id=n0,ifname=tap0,script=no,downscript=no &
+
+
+
+
+#####crear un bridge#######
+
+sudo ip l add name br0 type bridge
+
+#####bit de forward######
+
+echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+
+
+
+2001:470:ccba:177f::0/64
+
+#######Estatica########
+
+ip -6 a add 2001:470:ccba:177f::1/64 dev eth1
+ip -6 r add default via 2001:470:ccba::1
+nameserver 2001:470:ccba:2::2
+
+ip -6 a add 2001:470:ccba:177f::2/64 dev eth0
+ip -6 r add default via 2001:470:ccba:177f::1
+nameserver 2001:470:ccba:2::2
+
+
+
+
+#####radvd######
+
+apt-get install radvd
+nano /etc/radvd.conf
+
+		interface eth1 {
+		AdvSendAdvert on;
+		prefix 2001:470:ccba:177f::/64
+		{
+			AdvAutonomus on;
+			AdvOnlink on;
+			AdvRouterAddr on;
+			};
+
+		};
+
+######## cliente #########
+auto eth1
+	iface eth1 inet6 static
+	address 2001:470:ccba:177f::1
+	netmask 64
+
+"Tabla de enrutamiento?"
+"DNS?"
+"activar forwarding"
+
+#######dhcp#######
+
+sudo apt-get install isc-dhcp-server
+
+
+nano /etc/dhcp/dhcpd6.conf
+
+	default-lease-time 600;
+	max-lease-time 7200;
+	log-facility local7;
+	subnet6 2001:470:ccba:177f:: /64 {
+		range6 2001:470:ccba:177f::5 2001:470:ccba:177f::fffe
+		option dhcp6.name-servers 2001:470:ccba:2::2;
+	}
+
+### levantar el servicio dhcpv6#####
+
+/usr/sbin/dhcpd -6 -d -cf /etc/dhcp/dhcpd6.conf eth1
+
+
+
+ ###Comando para iptables SNAT###
+
+iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j SNAT --to 172.22.9.98 (-j MASQUERADE en el caso de que sea dinamica la ip)
+
+###contador iptables (lista las reglas)###
+
+iptables -t nat -L -m -v
+
+###flash de todas las reglas###
+
+iptables -t nat -F POSTROUTING
+
+###Comando para iptables DNAT###
+
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 8080 -d 172.22.9.98 -j DNAT --to 10.0.0.5:80
+
+###Persistente en el reinicio####
+
+/sbin/iptables-save --> para guardar las reglas
+
+/sbin/iptables-restore --> para cargar las reglas guardadas
+
+
+
+####################################################Comando IW########################################################################
+
+### listar redes dentro del alcance #####
+
+sudo iw dev wlan0 scan
+
+### seleccionar el modo de comportarse la tarjeta de red #####
+
+sudo iw dev wlan0 set type ibss
+
+### Conectarse a una red ###
+
+iw wlan0 ibss join SSID FRECUENCIA
+
+#### comprobar si esta conectado ###
+
+sudo iw dev wlan0 link

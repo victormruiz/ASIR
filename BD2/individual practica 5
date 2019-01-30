@@ -1,0 +1,82 @@
+1. Crea un tablespace de undo e intenta crear una tabla en él.
+
+CREATE UNDO TABLESPACE UNDOMIO DATAFILE '/mnt/oracle/undomio.dbf' SIZE 100M AUTOEXTEND OFF;
+ALTER USER SCOTT QUOTA UNLIMITED ON UNDOMIO
+
+Al intentar darle quotas a un usuario sobre el tablespace UNDO oracle me devuelve el siguiente error:
+ORA-30041: Cannot grant quota on the tablespace
+
+
+2. Crea un tablespace temporal TEMP2 y escribe una sentencia SQL que genere un
+script que haga usar TEMP2 a todos los usuarios que tienen USERS como tablespace por defecto.
+
+CREATE TEMPORARY TABLESPACE TEMP2 TEMPFILE  '/mnt/oracle/temp2.dbf' SIZE 200M;
+
+SELECT 'ALTER USER ' || USERNAME || ' TEMPORARY TABLESPACE TEMP2;'
+FROM DBA_USERS WHERE DEFAULT_TABLESPACE = 'USERS';
+
+3. Borra todos los tablespaces creados para
+esta práctica sin que quede rastro de ellos. Realiza las acciones previas que sean necesarias.
+
+DROP TABLESPACE UNDOMIO INCLUDING CONTENTS AND DATAFILES;
+DROP TABLESPACE TEMP2 INCLUDING CONTENTS AND DATAFILES;
+
+
+4. Averigua los segmentos existentes para realizar un ROLLBACK y el tamaño de sus extensiones.
+
+SELECT SEGMENT_NAME,INITIAL_EXTENT
+FROM DBA_ROLLBACK_SEGS;
+
+5. Queremos cambiar de ubicación un tablespace, pero antes debemos avisar a los usuarios que tienen acceso de lectura o escritura a cualquiera de los objetos almacenados en el mismo.
+Escribe un procedimiento llamado
+MostrarUsuariosAccesoTS que obtenga un listado con los nombres de dichos usuarios.
+
+create or replace procedure MostrarUsuariosAccesoTS(V_TABLESPACE VARCHAR2)
+is
+  cursor c_cursor
+  is
+  select table_name
+  from dba_tables
+  where tablespace_name=V_tablespace;
+begin
+  for i in c_cursor loop
+    tratartablas(i.table_name);
+  end loop;
+end;
+/
+
+create or replace procedure tratartablas(V_TABLENAME VARCHAR2)
+is
+  cursor c_cursor
+  is
+  select distinct grantee
+  from dba_tab_privs
+  where table_name=V_TABLENAME
+  and PRIVILEGE='SELECT' or PRIVILEGE='INSERT' or PRIVILEGE='DROP';
+begin
+  for i in c_cursor LOOP
+    DBMS_OUTPUT.PUT_LINE('Habria que avisar al usuario '||i.grantee);
+  end loop;
+end;
+/
+
+7. Averigua si pueden establecerse claúsulas de almacenamiento para las tablas o los espacios de tablas en Postgres.
+
+si que se puede establecer quotas a los usuarios de postgres, sería de la siguiente forma:
+
+ALTER USER VICTOR QUOTA 10M;
+
+
+8. Averigua si existe el concepto de índice en MySQL
+y si coincide con el existente en ORACLE. Explica los distintos tipos de índices existentes.
+
+existe el concepto y hay varios tipos:
+
+B_Tree: Se utilizan para las comparaciones de columnas con operadores (>,=,<,>=...)
+
+Hash: solo pueden usarse para comparaciones de igualdad, por lo que aquellos que usan los operadores = o <=>. No se pueden usar para ordenar, y no proporcionan información al optimizador sobre cuántas filas
+existen entre dos valores.
+
+full-text: permite más opciones al buscar partes de texto de un campo.
+
+spatial: es muy parecido al B_tree pero el spatial permite busqueda de valores exactos.
