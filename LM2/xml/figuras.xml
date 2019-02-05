@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<figuras>
+  <figura id="rectangulo">
+    <verticeinferiorizquierdo>x=150,y=400</verticeinferiorizquierdo>
+    <base>150</base>
+    <altura>120</altura>
+  </figura>
+  <figura id="circulo">
+    <centro>x=400,y=400</centro>
+    <radio>100</radio>
+  </figura>
+  <figura id="linea">
+    <inicio>x=400,y=400</inicio>
+    <fin>x=300,y=520</fin>
+  </figura>
+</figuras>

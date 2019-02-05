@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<eventos>
+  <evento tipo="accidente">
+    <km>42,200</km>
+    <nombre>A-49</nombre>
+    <sentido>Huelva</sentido>
+    <corte>1 carril</corte>
+    <fechayhora>12/02/2019 13:45</fechayhora>
+    <retencion>si</retencion>
+    <kmretencion>8</kmretencion>
+  </evento>
+  <evento tipo="retencion">
+    <km>550</km>
+    <nombre>A-4</nombre>
+    <sentido>Sevilla</sentido>
+    <fechayhora>13/02/2019 14:05</fechayhora>
+    <retencion>si</retencion>
+    <kmretencion>3</kmretencion>
+  <evento>
+</eventos>
